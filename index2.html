@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>能力普查数据可视化</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .file-input {
+            margin: 20px 0;
+        }
+
+        .highlight-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 12px;
+            font-size: 16px;
+        }
+        .highlight-row {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+        }
+        .highlight-category {
+            width: 90px;
+            text-align: center;
+            font-weight: bold;
+            color: #fff;
+            border-radius: 8px;
+            margin-right: 12px;
+            padding: 30px 0;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .cat-1 { background: #58B993; }
+        .cat-2 { background: #4AA6AC; }
+        .cat-3 { background: #FA706D; }
+        .cat-4 { background: #59C1E1; }
+        .cat-5 { background: #F9B348; }
+        .highlight-indicators {
+            flex: 1;
+        }
+        .indicator-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+        .indicator-label {
+            width: 80px;
+            color: #666;
+            font-size: 15px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .indicator-bar-bg {
+            background: #F2F2F2;
+            border-radius: 6px;
+            height: 8px;
+            flex: 1;
+            margin: 0 8px;
+            position: relative;
+        }
+        .indicator-bar {
+            height: 8px;
+            border-radius: 6px;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        .bar-1 { background: #58B993; }
+        .bar-2 { background: #4AA6AC; }
+        .bar-3 { background: #FA706D; }
+        .bar-4 { background: #59C1E1; }
+        .bar-5 { background: #F9B348; }
+        .wei-1 { background: #DAF0DD; color: #58B993; }
+        .wei-2 { background: #D5ECED; color: #4AA6AC; }
+        .wei-3 { background: #FFE2E4; color: #FA706D; }
+        .wei-4 { background: #DDF6FF; color: #59C1E1; }
+        .wei-5 { background: #FFF2D9; color: #F9B348; }
+        .indicator-value {
+            width: 28px;
+            text-align: right;
+            color: #666;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div style="max-width: 1000px; margin: 0 auto;">
+        <input type="file" id="fileInput" accept=".xlsx, .xls">
+        <button id="saveButton" onclick="saveFullPage()">保存为图片</button>
+    </div>
+    <div class="container">
+        <h1 style="text-align: center; font-size: 40px;">大连理工大学干部能力普查报告</h1>
+        <p id="name" style="text-align: center; width: 300px;font-size: 24px; font-weight: bold; background-color: #F2F2F2; margin: 0 auto;"></p>
+
+        <h2>一、能力素质雷达图</h2>
+        <div style="display: flex; border: 2px solid #5B89B4">
+            <div style="width: 645px; height: 675px; ">
+                <canvas id="myChart"></canvas>
+            </div>
+            <div style="width: 355px; height: 675px;">
+                <table id="dataTable" style="width: 100%;height :100%; font-size: 15px; border-collapse: collapse; text-align: center; border: 1px solid white;">
+                    <thead>
+                        <tr style="background-color: #0070C0; color: white;">
+                            <th style="border: 1px solid white;">方面</th>
+                            <th style="border: 1px solid white;">具体指标</th>
+                            <th style="border: 1px solid white;">自画像</th>
+                            <th style="border: 1px solid white;">他画像</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h2>二、管理个性亮点/盲点图</h2>
+        
+        <div style="display: flex; align-items: stretch;">
+            <div id="myChart2" style="width: 40%; display: block;">
+            </div>
+            <div style="width: 60%; margin-left: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="color: #1CC6C6; font-size: 20px;font-weight: bold; margin-bottom: 10px;">❖ 管理个性亮点</div>
+                    <div id="highlight" style="background-color: #F8F8F8; border-radius: 8px; padding: 10px; line-height: 1.8; font-size: 16px; color: #333;">
+                    </div>
+                </div>
+                <div>
+                    <div style="color: #FFA940; font-size: 20px;font-weight: bold; margin-bottom: 10px;">❖ 管理个性盲点</div>
+                    <div id="blind" style="background-color: #F8F8F8; border-radius: 8px; padding: 10px; line-height: 1.8; font-size: 16px; color: #333;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h2>三、能力素质、管理个性特点</h2>
+        <div style="border: 2px solid #5B89B4;">
+            <div style="display: flex; width: 100%; margin: 10px; ">
+                <div style="margin-top: 5px; font-weight: bold; font-size: 24px; width: 100px; margin-right: 10px; text-align: center;">能力素质层面</div>
+                <div style="margin-left: 15px; height: 80px; background-color: #1CC6C6; color: #fff; border-radius: 6px; padding: 2px 12px; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center;">优<br>势</div>
+                <div id="advantage1" style="width: 300px; font-size: 18px; color: #333; text-align: center; padding: 0 30px; border: 1px dashed #5B89B4; display: flex; align-items: center; justify-content: center;"></div>
+                <div style="margin-left: 30px; height: 80px; background-color: #FFA940; color: #fff; border-radius: 6px; padding: 2px 12px; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center;">短<br>板</div>
+                <div id="disadvantage1" style="width: 300px; font-size: 18px; color: #333; text-align: center; padding: 0 30px; border: 1px dashed #5B89B4; display: flex; align-items: center; justify-content: center;"></div>
+            </div>
+
+            <div style="display: flex; width: 100%; margin: 10px;">
+                <div style="margin-top: 5px; font-weight: bold; font-size: 24px; width: 100px; margin-right: 10px; text-align: center;">管理个性层面</div>
+                <div style="margin-left: 15px; height: 80px; background-color: #1CC6C6; color: #fff; border-radius: 6px; padding: 2px 12px; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center;">亮<br>点</div>
+                <div id="advantage2" style="width: 300px; font-size: 18px; color: #333; text-align: center; padding: 0 30px; border: 1px dashed #5B89B4; display: flex; align-items: center; justify-content: center;"></div>
+                <div style="margin-left: 30px; height: 80px; background-color: #FFA940; color: #fff; border-radius: 6px; padding: 2px 12px; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center;">盲<br>点</div>
+                <div id="disadvantage2" style="width: 300px; font-size: 18px; color: #333; text-align: center; padding: 0 30px; border: 1px dashed #5B89B4; display: flex; align-items: center; justify-content: center;"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let myChart = null; // 声明全局变量
+        let labels = [];
+        let sublabels = [];
+        let selfScores = [];
+        let otherScores = [];
+        let name = "";
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            name = file.name.split('.')[0]; // 获取文件名（不含扩展名）
+            // 如果文件名中包含"_", 则只取"_"后面的部分作为姓名
+ if (name.includes('_')) {
+ name = name.substring(name.indexOf('_') + 1);
+ }
+
+
+            document.getElementById('name').textContent = '姓名：' + name;
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                // 获取第一个工作表
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                
+                // 将工作表转换为JSON
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                // 处理数据并创建图表
+                createChart(jsonData);
+
+                // 获取第二个工作表
+                const secondSheet = workbook.Sheets[workbook.SheetNames[1]];
+                const jsonData2 = XLSX.utils.sheet_to_json(secondSheet);
+                const thirdSheet = workbook.Sheets[workbook.SheetNames[2]];
+                const jsonData3 = XLSX.utils.sheet_to_json(thirdSheet);
+                createChart2(jsonData2, jsonData3);
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+
+
+
+
+        function createChart(data) {
+            // 假设数据格式为：[{方面: "xxx", 自画像: 90, 他画像: 85}, ...]
+            labels = [...new Set(data.map(item => item['方面']))];
+            sublabels = [...new Set(data.map(item => {
+                const indicator = item['具体指标'] || '';
+                // 提取指标名称，例如从 "1 .政治判断力: 描述..." 中提取 "政治判断力"
+                return indicator.split(/[:：]/)[0].replace(/^\d+\s*\.\s*/, '').trim();
+            }))];
+            selfScores = data.map(item => item['自画像'] );
+            const selfScores2 = data.reduce((acc, item, index) => {
+                if (index % 3 === 0) {
+                    const group = data.slice(index, index + 3);
+                    const avg = group.reduce((sum, curr) => sum + curr['自画像'], 0) / 3 ;
+                    acc.push(avg.toFixed(3));
+                }
+                return acc;
+            }, []);
+            const otherScores = data.map(item => item['他画像'] );
+            const otherScores2 = data.reduce((acc, item, index) => {
+                if (index % 3 === 0) {
+                    const group = data.slice(index, index + 3);
+                    const avg = group.reduce((sum, curr) => sum + curr['他画像'], 0) / 3 ;
+                    acc.push(avg.toFixed(3));
+                }
+                return acc;
+            }, []);
+            console.log(labels,sublabels,selfScores,otherScores);
+            const ctx = document.getElementById('myChart').getContext('2d');
+            
+            // 如果已存在图表，先销毁
+            if (myChart instanceof Chart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '他画像',
+                        data: otherScores2,
+                        backgroundColor: 'rgba(255, 192, 203, 0.4)',
+                        borderColor: 'rgba(179, 45, 45, 1)',
+                        borderWidth: 2
+                    }, {
+                        label: '自画像',
+                        data: selfScores2,
+                        backgroundColor: 'rgba(173, 216, 230, 0.4)',
+                        borderColor: 'rgba(85, 156, 185, 1) ',
+                        borderWidth: 2
+                    }]
+                },
+
+                options: {
+                    devicePixelRatio: 3, // 提高图表渲染分辨率
+                    scales: {
+                        r: {
+                            grid: {
+                                color: '#CCCCCC'
+                            },
+                            angleLines: {
+                                color: '#CCCCCC'
+                            },
+                            beginAtZero: true,
+                            max: 10,
+                            ticks: {
+                                z:1 ,
+                                stepSize: 1,
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                showLabelBackdrop: false,
+                                color: '#000000',
+                                callback: function(value) {
+                                    return value.toFixed(1) + '         ';;  // 刻度值显示为1位小数
+                                }
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 16,
+                                    weight: 900
+                                },
+                                color: 'rgb(0, 0, 0)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#000000',  // 设置图例文字为黑色
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                padding: 30,  // 增加图例与图表的距离
+                                generateLabels: function(chart) {
+                                    // 首先，获取 Chart.js 默认生成的图例项
+                                    const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                    
+                                    // 然后，遍历每一个图例项，并单独将它的边框宽度设置为 1
+                                    labels.forEach(label => {
+                                        label.lineWidth = 0;
+                                    });
+                                    
+                                    // 返回修改后的图例项
+                                    return labels;
+                                }
+                            }
+                        },
+                       
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    // 使用 .raw 来获取未经处理的原始数据（即我们提供的三位小数字符串）
+                                    if (context.raw !== null) {
+                                        label += context.raw;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+
+                    }
+                }
+            });
+            
+            // 使用labels和scores数据填充表格
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = ''; // 清空现有内容
+            
+            labels.forEach((label, i) => {
+                for(let j = 0; j < 3; j++) {
+                    const row = document.createElement('tr');
+                    
+                    if(j === 0) {
+                        const aspectCell = document.createElement('td');
+                        aspectCell.textContent = label;
+                        aspectCell.rowSpan = 3;
+                        aspectCell.style.border = '1px solid #fff';
+                        aspectCell.style.backgroundColor = i % 2 === 0 ? '#D3E5F5' : '#DAF3FE';
+                        row.appendChild(aspectCell);
+                    }
+                    
+                    // 表格中显示时才保留1位小数
+                    const cells = [
+                        {text: sublabels[3*i+j]},
+                        {text: selfScores[3*i+j].toFixed(1)},  // 显示时保留1位小数
+                        {text: otherScores[3*i+j].toFixed(1)}  // 显示时保留1位小数
+                    ];
+                    
+                    cells.forEach(cell => {
+                        const td = document.createElement('td');
+                        td.textContent = cell.text;
+                        td.style.border = '1px solid #fff';
+                        td.style.backgroundColor = i % 2 === 0 ? '#D3E5F5' : '#DAF3FE';
+                        row.appendChild(td);
+                    });
+                    
+                    tableBody.appendChild(row);
+                }
+            });
+            
+            const advantage1 = document.getElementById("advantage1");
+            const disadvantage1 = document.getElementById("disadvantage1")
+            const sublabel_otherscore = [];
+            for(let i = 0; i < sublabels.length; i++){
+                sublabel_otherscore.push({"指标":sublabels[i],"分数":otherScores[i]});
+            }
+            sublabel_otherscore.sort((a, b) => b['分数'] - a['分数']);
+            let ad1 = ""
+            let ds1 = ""
+            for(let i = 0; i < 5; i++){
+                ad1 += (i+1)+"."+sublabel_otherscore[i]["指标"];
+                ds1 += (i+1)+"."+sublabel_otherscore[26-i]["指标"];
+                if(i==0||i==2||i==3){ ad1 += "&nbsp;&nbsp;"; ds1 += "&nbsp;&nbsp;"}
+                else if(i==1){ad1 += "<br>"; ds1 += "<br>"}
+            }
+            advantage1.innerHTML = ad1
+            disadvantage1.innerHTML = ds1
+        }
+        
+        function createChart2(data, data2) {
+            console.log(data);
+            console.log(data2);
+            // 清空现有内容
+            const chart2Container = document.getElementById('myChart2');
+            chart2Container.innerHTML = '';
+
+            // 定义类别和对应的颜色
+            const categories = [
+                { name: '发展意愿', color: 'cat-1', barClass: 'bar-1', wei: 'wei-1' },
+                { name: '思维习惯', color: 'cat-2', barClass: 'bar-2', wei: 'wei-2' },
+                { name: '情绪管理', color: 'cat-3', barClass: 'bar-3', wei: 'wei-3' },
+                { name: '开放合作', color: 'cat-4', barClass: 'bar-4', wei: 'wei-4' },
+                { name: '任务执行', color: 'cat-5', barClass: 'bar-5', wei: 'wei-5' }
+            ];
+
+            // 为每个类别创建行
+            categories.forEach((category, index) => {
+                const row = document.createElement('div');
+                row.className = 'highlight-row';
+
+                // 创建类别标题
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = `highlight-category ${category.color}`;
+                categoryDiv.textContent = category.name;
+                row.appendChild(categoryDiv);
+
+                // 创建指标容器
+                const indicatorsDiv = document.createElement('div');
+                indicatorsDiv.className = 'highlight-indicators';
+
+                // 获取该类别的指标数据
+                const categoryData = data.filter(item => item['方面'] === category.name);
+                console.log(categoryData);
+                // 为每个指标创建行
+                categoryData.forEach(item => {
+                    const indicatorRow = document.createElement('div');
+                    indicatorRow.className = 'indicator-row';
+
+                    // 创建指标标签
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = `indicator-label ${category.wei}`;
+                    labelDiv.textContent = item['维度'];
+                    indicatorRow.appendChild(labelDiv);
+
+                    // 创建进度条背景
+                    const barBg = document.createElement('div');
+                    barBg.className = 'indicator-bar-bg';
+
+                    // 创建进度条
+                    const bar = document.createElement('div');
+                    bar.className = `indicator-bar ${category.barClass}`;
+                    const value = item['分数'];
+                    bar.style.width = `${value * 10}%`;
+                    barBg.appendChild(bar);
+                    indicatorRow.appendChild(barBg);
+
+                    // 创建数值显示
+                    const valueDiv = document.createElement('div');
+                    valueDiv.className = 'indicator-value';
+                    valueDiv.textContent = value.toFixed(1);
+                    indicatorRow.appendChild(valueDiv);
+
+                    indicatorsDiv.appendChild(indicatorRow);
+                });
+
+                row.appendChild(indicatorsDiv);
+                chart2Container.appendChild(row);
+            });
+            
+            // 根据分数对数据进行排序
+            data.sort((a, b) => b['分数'] - a['分数']);
+            data2_ = Object.fromEntries(data2.map(d => [
+                d["维度"],
+                {
+                    "高分表现": d["高分表现"],
+                    "低分表现": d["低分表现"]
+                }
+            ]));
+
+            console.log(data2_);
+            let highlight = [];
+            let blind = [];
+            let ad2 = ""
+            let ds2 = ""
+
+            for(let i = 0; i < 4; i++){
+                highlight.push((i+1)+".<span style='font-weight: 800;'>"+data[i]["维度"]+"</span>："+data2_[data[i]["维度"]]["高分表现"]);
+                blind.push((i+1)+".<span style='font-weight: 800;'>"+data[19-i]["维度"]+"</span>："+data2_[data[19-i]["维度"]]["低分表现"]);
+                ad2 += (i+1)+"."+data[i]["维度"];
+                ds2 += (i+1)+"."+data[19-i]["维度"];
+                if(i === 1) {
+                    ad2 += "<br>";
+                    ds2 += "<br>";
+                } else if (i === 0 || i === 2) {
+                    ad2 += "&nbsp;&nbsp;";
+                    ds2 += "&nbsp;&nbsp;";
+                }
+            }
+
+            const highlightDiv = document.getElementById("highlight");
+            const blindDiv = document.getElementById("blind");
+            highlightDiv.innerHTML = highlight.join("<br>");
+            blindDiv.innerHTML = blind.join("<br>");
+            const advantage2 = document.getElementById("advantage2");
+            const disadvantage2 = document.getElementById("disadvantage2");
+            advantage2.innerHTML = ad2;
+            disadvantage2.innerHTML = ds2;
+        }
+
+        function saveFullPage() {
+            // 获取要保存的容器
+            const container = document.querySelector('.container');
+            // 配置 html2canvas 选项
+            const options = {
+                scale: 2, // 提高清晰度
+                useCORS: true,
+                logging: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                height: container.scrollHeight, // 使用实际高度
+                windowHeight: container.scrollHeight,
+                onclone: function(clonedDoc) {
+                    const clonedContainer = clonedDoc.querySelector('.container');
+                    if (clonedContainer) {
+                        clonedContainer.style.height = 'auto';
+                        clonedContainer.style.overflow = 'visible';
+                    }
+                    
+                    // 确保表格样式正确
+                    const table = clonedDoc.querySelector('#dataTable');
+                    if (table) {
+                        table.style.borderCollapse = 'collapse';
+                        table.style.width = '100%';
+                        const cells = table.getElementsByTagName('td');
+                        for (let cell of cells) {
+                            cell.style.border = '1px solid #fff';
+                        }
+                    }
+                }
+            };
+
+            html2canvas(container, options).then(canvas => {
+                const image = canvas.toDataURL('image/png', 1.0);
+                const link = document.createElement('a');
+                link.download = name + '——能力普查报告.png';
+                link.href = image;
+                
+                // 触发下载
+                link.click();
+            }); 
+        }
+        
+    </script>
+</body>
+</html>
